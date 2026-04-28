@@ -17,7 +17,7 @@ except Exception as e:
     print(f"[ERROR] Failed to initialize Bedrock client: {e}")
     bedrock = None
 
-MODEL_ID = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0"
 
 def analyze_trade_context_bedrock(market_data: dict, headlines: list):
     """

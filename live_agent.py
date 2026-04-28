@@ -75,6 +75,9 @@ def run_live_agent():
         print("[SKIP] No clear directional confluence.")
         return
 
+
+
+
     # 6. ML Ensemble Prediction (Transformer + XGBoost)
     print("\n--- LAYER 2: ML Ensemble ---")
     try:
@@ -108,6 +111,8 @@ def run_live_agent():
         print(f"[SKIP] Confluence ({conf_dir}) disagrees with ML ({ml_dir}).")
         return
 
+
+
     # 7. AI Validation (Groq or Bedrock)
     ai_provider = os.getenv("AI_PROVIDER", "groq").lower()
     print(f"\n--- LAYER 3: AI Validation ({ai_provider.upper()}) ---")
@@ -130,6 +135,7 @@ def run_live_agent():
         
     ai_dec = ai_response.get('decision', 'SKIP')
     ai_conf = ai_response.get('confidence', 0)
+
     
     print(f"AI Decision: {ai_dec} | Confidence: {ai_conf}%")
     print(f"Reason: {ai_response.get('reasoning')}")
@@ -140,6 +146,8 @@ def run_live_agent():
     if mapped_ai_dec != conf_dir or ai_conf < 65:
         print(f"[SKIP] AI Validation failed. (AI: {ai_dec}, Conf: {ai_conf}%)")
         return
+
+
         
     # 8. Risk Management & Position Sizing
     sl_pct = ai_response.get('suggested_sl_distance_pct', 0.015)
@@ -155,10 +163,11 @@ def run_live_agent():
         return
 
     # 9. SIGNAL FIRED
-    print(f"\n🟢🟢🟢 SIGNAL FIRED: {conf_dir} 🟢🟢🟢")
+    print(f"\nSIGNAL FIRED: {conf_dir}")
     print(f"Entry: ${current_price:.2f}")
     print(f"SL: ${sl:.2f} | TP: ${tp:.2f}")
     print(f"Size: {pos_btc:.4f} BTC (Risking {risk_pct}%)")
+
 
     logger.log_signal(
         symbol="BTCUSDT", direction=conf_dir, entry=current_price, 
@@ -230,9 +239,9 @@ if __name__ == "__main__":
         run_live_agent()
     else:
         run_live_agent()
-        # Schedule every 15m
-        schedule.every(15).minutes.do(run_live_agent)
-        print("Agent scheduler running...")
+        # Schedule every 1 minute for faster reaction
+        schedule.every(1).minutes.do(run_live_agent)
+        print("Agent scheduler running (1-minute intervals)...")
         while True:
             schedule.run_pending()
             time.sleep(30)
