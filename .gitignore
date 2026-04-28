@@ -1,0 +1,24 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Models and Scalers (Optional: if they are very large, but here they are needed for the bot)
+# We will keep .pkl and .pt as they are small and needed for the agent
+
+# Logs and Data
+trades.csv
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
