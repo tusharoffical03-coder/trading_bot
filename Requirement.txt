@@ -1,4 +1,16 @@
-pandas numpy scikit-learn xgboost torch
-python-binance requests ta feedparser
-vaderSentiment schedule python-dotenv groq ccxt
-boto3 supabase
+pandas
+numpy
+scikit-learn
+xgboost
+torch
+python-binance
+requests
+ta
+feedparser
+vaderSentiment
+schedule
+python-dotenv
+groq
+ccxt
+boto3
+supabase
