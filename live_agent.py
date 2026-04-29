@@ -19,30 +19,63 @@ logger = TradeLogger()
 
 load_dotenv()
 
+def validate_and_load_env():
+    """Validate and set defaults for critical environment variables"""
+    defaults = {
+        "CAPITAL": "1000",
+        "MAX_RISK_PCT": "2.0",
+        "MAX_DAILY_TRADES": "100",
+        "AI_PROVIDER": "groq"
+    }
+    
+    for var, default_val in defaults.items():
+        value = os.getenv(var, "").strip()
+        if not value:
+            os.environ[var] = default_val
+            print(f"[WARN] {var} was empty or missing, using default: {default_val}")
+
 def run_live_agent():
     print(f"\n[{datetime.now()}] >>> Starting Multi-Layer Confluence Analysis <<<")
+    
+    # Validate environment variables first
+    validate_and_load_env()
     
     # Check outcomes of previous trades first
     check_open_trades()
     
     # 1. Init helpers
+    try:
+        capital = float(os.getenv("CAPITAL", "1000"))
+        max_risk_pct = float(os.getenv("MAX_RISK_PCT", "2.0"))
+        max_daily_trades = int(os.getenv("MAX_DAILY_TRADES", "100"))
+    except (ValueError, TypeError) as e:
+        print(f"[ERROR] Invalid configuration values: {e}")
+        return
+    
     risk_mgr = RiskManager(
-        capital=float(os.getenv("CAPITAL", "1000")),
-        max_risk_pct=float(os.getenv("MAX_RISK_PCT", "2.0")),
-        max_daily_trades=int(os.getenv("MAX_DAILY_TRADES", "100"))
+        capital=capital,
+        max_risk_pct=max_risk_pct,
+        max_daily_trades=max_daily_trades
     )
     
     if not risk_mgr.can_trade(logger.get_daily_trade_count()):
         return
 
     # 2. Fetch Multi-TF Data
-    mtf = fetch_multi_timeframe()
-    if mtf['15m'].empty or mtf['1h'].empty or mtf['4h'].empty:
-        print("[ERROR] Failed to fetch required timeframes. Skipping.")
+    try:
+        mtf = fetch_multi_timeframe()
+        if mtf['15m'].empty or mtf['1h'].empty or mtf['4h'].empty:
+            print("[ERROR] Failed to fetch required timeframes. Skipping.")
+            return
+    except Exception as e:
+        print(f"[ERROR] Failed to fetch market data: {e}")
         return
 
-        
-    fg_index = fetch_fear_greed_index()
+    try:
+        fg_index = fetch_fear_greed_index()
+    except Exception as e:
+        print(f"[WARN] Failed to fetch fear/greed index: {e}")
+        fg_index = {'value': 50}  # Neutral default
 
     # 3. Apply Indicators
     df_15m = add_indicators(mtf['15m'])
@@ -114,10 +147,15 @@ def run_live_agent():
 
 
     # 7. AI Validation (Groq or Bedrock)
-    ai_provider = os.getenv("AI_PROVIDER", "groq").lower()
+    ai_provider = os.getenv("AI_PROVIDER", "groq").lower().strip()
     print(f"\n--- LAYER 3: AI Validation ({ai_provider.upper()}) ---")
-    _, headlines_raw = get_news_sentiment(limit=10)
-    headlines = [h[0] for h in headlines_raw]
+    
+    try:
+        _, headlines_raw = get_news_sentiment(limit=10)
+        headlines = [h[0] for h in headlines_raw] if headlines_raw else []
+    except Exception as e:
+        print(f"[WARN] Failed to fetch news: {e}")
+        headlines = []
     
     market_context = {
         'current_price': current_price,
@@ -125,7 +163,7 @@ def run_live_agent():
         'ml_direction': ml_dir,
         'ml_prob': ml_prob,
         'signals': signals,
-        'fear_greed': fg_index['value']
+        'fear_greed': fg_index.get('value', 50)
     }
     
     if ai_provider == "bedrock":
@@ -176,7 +214,7 @@ def run_live_agent():
     )
     
     # Notify n8n Webhook
-    webhook_url = os.getenv("N8N_WEBHOOK_URL")
+    webhook_url = os.getenv("N8N_WEBHOOK_URL", "").strip()
     if webhook_url:
         try:
             payload = {
@@ -209,8 +247,8 @@ def run_live_agent():
     send_telegram_message(tg_msg)
 
 def send_telegram_message(message):
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
     if token and chat_id and token != "your_bot_token_here":
         url = f"https://api.telegram.org/bot{token}/sendMessage"
         payload = {"chat_id": chat_id, "text": message, "parse_mode": "HTML"}
@@ -245,4 +283,3 @@ if __name__ == "__main__":
         while True:
             schedule.run_pending()
             time.sleep(30)
-
