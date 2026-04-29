@@ -6,16 +6,29 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Initialize Bedrock client
+bedrock = None
+bedrock_error = None
+
 try:
-    bedrock = boto3.client(
-        service_name='bedrock-runtime',
-        region_name=os.getenv('AWS_REGION', 'us-east-1'),
-        aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-        aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
-    )
+    aws_key = os.getenv('AWS_ACCESS_KEY_ID', '').strip()
+    aws_secret = os.getenv('AWS_SECRET_ACCESS_KEY', '').strip()
+    aws_region = os.getenv('AWS_REGION', 'us-east-1').strip()
+    
+    # Only attempt to initialize if credentials are provided
+    if aws_key and aws_secret:
+        bedrock = boto3.client(
+            service_name='bedrock-runtime',
+            region_name=aws_region,
+            aws_access_key_id=aws_key,
+            aws_secret_access_key=aws_secret
+        )
+    else:
+        bedrock_error = "AWS credentials not provided (AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY missing)"
+        print(f"[WARN] {bedrock_error}")
+        
 except Exception as e:
-    print(f"[ERROR] Failed to initialize Bedrock client: {e}")
-    bedrock = None
+    bedrock_error = str(e)
+    print(f"[ERROR] Failed to initialize Bedrock client: {bedrock_error}")
 
 MODEL_ID = "anthropic.claude-3-sonnet-20240229-v1:0"
 
@@ -24,7 +37,7 @@ def analyze_trade_context_bedrock(market_data: dict, headlines: list):
     Sends full technical confluence + news to Claude via AWS Bedrock.
     """
     if not bedrock:
-        return _fallback_error("Bedrock client not initialized.")
+        return _fallback_error(bedrock_error or "Bedrock client not initialized.")
 
     news_text = "\n".join([f"- {h}" for h in headlines[:10]])
     
